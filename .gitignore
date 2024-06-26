@@ -24,3 +24,4 @@ yarn-error.log*
 # Ignore environment variables
 .env
 
+.env
