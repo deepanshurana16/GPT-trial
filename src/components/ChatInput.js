@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, TextField, Button, CircularProgress, Slide } from '@mui/material';
 import { getChatResponse } from '../api';
 
@@ -6,60 +6,40 @@ function ChatInput({ onSendMessage }) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
-  const [recognition, setRecognition] = useState(null);
-  const [listening, setListening] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = false;
-      recognitionInstance.lang = 'en-US';
+  const recognition = new window.webkitSpeechRecognition(); // Initialize SpeechRecognition
+  recognition.continuous = true; // Continuous recognition mode
+  recognition.lang = 'en-US'; // Set language to English
 
-      recognitionInstance.onstart = () => {
-        setListening(true);
-      };
-
-      recognitionInstance.onend = () => {
-        setListening(false);
-      };
-
-      recognitionInstance.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-      };
-
-      setRecognition(recognitionInstance);
-    }
-  }, []);
-
-  const startListening = () => {
-    if (recognition) {
-      recognition.start();
-    }
+  recognition.onstart = () => {
+    console.log('Speech recognition started.');
+    setIsListening(true); // Update state to indicate speech recognition is active
   };
 
-  const stopListening = () => {
-    if (recognition) {
-      recognition.stop();
-      setListening(false);
-    }
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript;
+    setInput((prevInput) => prevInput + ' ' + transcript); // Append transcript to existing input
+  };
+
+  recognition.onend = () => {
+    setIsListening(false); // Update state to indicate speech recognition has stopped
   };
 
   const toggleListening = () => {
-    if (listening) {
-      stopListening();
+    if (isListening) {
+      recognition.stop(); // Stop speech recognition
     } else {
-      startListening();
+      recognition.start(); // Start speech recognition
     }
+    setIsListening(!isListening); // Toggle listening state
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const response = await getChatResponse(input);
+    const response = await getChatResponse(input.trim()); // Trim input to remove leading/trailing spaces
     onSendMessage(input, response);
 
     setInput('');
@@ -76,7 +56,7 @@ function ChatInput({ onSendMessage }) {
       <TextField
         variant="outlined"
         fullWidth
-        placeholder={listening ? "Listening..." : "How are you feeling today?"}
+        placeholder="How are you feeling today?"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         sx={{ backgroundColor: '#FFFFFF', mr: 1 }} // White background for TextField
@@ -84,21 +64,19 @@ function ChatInput({ onSendMessage }) {
       <Button
         type="button"
         variant="contained"
-        color="secondary"
+        color={isListening ? 'secondary' : 'primary'}
+        fullWidth
         disableElevation
-        disabled={isLoading}
         onClick={toggleListening}
         sx={{
           mt: 1,
-          mr: 1,
           transition: 'background-color 0.3s ease',
           '&:hover': {
             backgroundColor: '#597445', // Darker shade for hover effect
           },
-          textTransform: 'none', // Prevents uppercase transformation
         }}
       >
-        {listening ? 'Stop' : 'Speak'}
+        {isListening ? 'Stop' : 'Speak'}
       </Button>
       <Button
         type="submit"
